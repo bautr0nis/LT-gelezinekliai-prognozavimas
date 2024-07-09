@@ -1,0 +1,342 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#Y DALIS
+
+# Reikalingi paketai
+library(readxl)
+library(dplyr)
+library(outliers)
+
+# Nuskaitom excel
+df <- read_excel("Data/duomenys_gelezinkeliai.xlsx")
+
+colnames(df)[1] <- "date"
+colnames(df)[2] <- "keleiviu_sk"
+colnames(df)[3] <- "kroviniu_kiekis" # Tuks. tonu
+
+#Pakeiciam reiksmes
+df$keleiviu_sk <- df$keleiviu_sk / 100
+df$kroviniu_kiekis <- df$kroviniu_kiekis / 100
+
+# Convert the date column to Date object
+df$date <- as.Date(paste0(substring(df$date, 1, 4), "-", substring(df$date, 6, 7), "-01"))
+df$date <- format(df$date, "%Y-%m-%d")
+df$keleiviu_sk <- as.double(df$keleiviu_sk)
+df$kroviniu_kiekis <- as.double(df$kroviniu_kiekis)
+
+
+# Skaiciuojam IQR
+iqr <- IQR(df$keleiviu_sk)
+
+# Aprašom apatinias ir viršutines ribas
+lower_limit <- quantile(df$keleiviu_sk, 0.25) - 1.5 * iqr
+upper_limit <- quantile(df$keleiviu_sk, 0.75) + 1.5 * iqr
+
+# Pakeičiam ribas
+df$keleiviu_sk[df$keleiviu_sk < lower_limit] <- lower_limit
+df$keleiviu_sk[df$keleiviu_sk > upper_limit] <- upper_limit
+
+# Plot boxplot with replaced outliers
+boxplot(df$keleiviu_sk)
+
+
+
+
+```
+```{r}
+# X DALIS
+library(dplyr)
+
+######################## NAFTOS KAINA ##########################
+df1 <- read_excel("Data/b_oil_price.xls", sheet = "Data 1")
+
+#Pakeiciam daily data -> monthly data. Oil_price bus average
+# Convert 'Date' column to proper POSIXct format
+df1$Date <- as.POSIXct(df1$Date)
+# Extract month and year from the 'Date' column
+df1$Month <- format(df1$Date, "%Y-%m-01")
+# Calculate monthly average oil prices
+df_oil <- df1 %>%
+  group_by(Month) %>%
+  summarize(avg_oil_price = mean(oil_price))
+colnames(df_oil)[1] <- "date"
+# Print the resulting dataframe
+
+######################## GYVENTOJU SKAICIUS ##########################
+df_gyv_sk <- read_excel("Data/b_gyventoju_sk.xlsx")
+df_gyv_sk <- df_gyv_sk[-c(1:2), ]
+
+colnames(df_gyv_sk)[1] <- "date"
+colnames(df_gyv_sk)[2] <- "gyv_sk"
+
+df_gyv_sk$date <- as.Date(paste0(substring(df_gyv_sk$date, 1, 4), "-", substring(df_gyv_sk$date, 6, 7), "-01"))
+df_gyv_sk$date <- format(df_gyv_sk$date, "%Y-%m-%d")
+
+######################## NEDARBO LYGIS ##########################
+df_nedarbingumas <- read_excel("Data/b_nedarbo_lygis.xlsx")
+df_nedarbingumas <- df_nedarbingumas[-c(1:3), ]  # Istrinam nereikalinga column
+df_nedarbingumas <- df_nedarbingumas[, -c(1, 3)] # Removing first column
+
+colnames(df_nedarbingumas)[1] <- "date"
+colnames(df_nedarbingumas)[2] <- "unempl_lvl"
+
+df_nedarbingumas$date <- as.Date(paste0(substring(df_nedarbingumas$date, 1, 4), "-", substring(df_nedarbingumas$date, 6, 7), "-01"))
+df_nedarbingumas$date <- format(df_nedarbingumas$date, "%Y-%m-%d")
+
+# Convert the date column to Date object
+
+######################## BENDRA SALIES EKO PROGNOZE ##########################
+df_prognoze <- read_excel("Data/bendra_salies_eko_prognoze.xlsx")
+colnames(df_prognoze)[1] <- "date"
+colnames(df_prognoze)[2] <- "eko_prognoze"
+
+#Laiko formata sutvarkom
+df_prognoze$date <- as.Date(paste0(substring(df_prognoze$date, 1, 4), "-", substring(df_prognoze$date, 6, 7), "-01"))
+df_prognoze$date <- format(df_prognoze$date, "%Y-%m-%d")
+
+
+head(df_prognoze)
+```
+```{r}
+library(lubridate)
+# Keleiviu_sk kintamieji
+######################## NAUJU SALYJE IREGISTRUOTU AUTOMOBILIU SK ##########################
+df_auto_sk <- read_excel("Data/passengers/auto_sk.xlsx")
+
+#Laiko formata sutvarkom
+df_auto_sk$date <- as.Date(paste0(substring(df_auto_sk$date, 1, 4), "-", substring(df_auto_sk$date, 6, 7), "-01"))
+df_auto_sk$date <- format(df_auto_sk$date, "%Y-%m-%d")
+
+######################## EMIGRANTU SK ##########################
+df_emigrantu_sk <- read_excel("Data/passengers/emigrantu_sk.xlsx")
+
+#Laiko formata sutvarkom
+df_emigrantu_sk$date <- as.Date(paste0(substring(df_emigrantu_sk$date, 1, 4), "-", substring(df_emigrantu_sk$date, 6, 7), "-01"))
+df_emigrantu_sk$date <- format(df_emigrantu_sk$date, "%Y-%m-%d")
+
+######################## EISMO IVYKIU SK ##########################
+df_eismo_ivykiai <- read_excel("Data/passengers/eismo_ivykiai.xlsx")
+
+#Laiko formata sutvarkom
+df_eismo_ivykiai$date <- as.Date(paste0(substring(df_eismo_ivykiai$date, 1, 4), "-", substring(df_eismo_ivykiai$date, 6, 7), "-01"))
+df_eismo_ivykiai$date <- format(df_eismo_ivykiai$date, "%Y-%m-%d")
+
+######################## TURISTU SKAICIUS ##########################
+df_turistai <- read_excel("Data/passengers/turistu_sk.xlsx")
+
+#Laiko formata sutvarkom
+df_turistai$date <- as.Date(paste0(substring(df_turistai$date, 1, 4), "-", substring(df_turistai$date, 6, 7), "-01"))
+df_turistai$date <- format(df_turistai$date, "%Y-%m-%d")
+
+######################## VIDUTINE GYVENIMO TRUKME ##########################
+df_gyvenimo_trukme <- read_excel("Data/passengers/vidutine_gyvenimo_trukme.xlsx")
+
+df_gyvenimo_trukme <- df_gyvenimo_trukme[, -c(2:3)]
+df_gyvenimo_trukme$date <- as.Date(paste0(df_gyvenimo_trukme$date, "-01-01"))
+
+# Sukurkite tuščią dataframe'ą, kuriame bus saugomi mėnesiniai duomenys
+df_monthly_gyv_trukme <- data.frame(date = as.Date(character()), Bendras = numeric())
+
+# Loop per kiekvieną eilutę originaliame dataframe'e
+for (i in 1:nrow(df_gyvenimo_trukme)) {
+  year <- year(df_gyvenimo_trukme$date[i])
+  value <- df_gyvenimo_trukme$Bendras[i]
+  dates <- seq(as.Date(paste0(year, "-01-01")), as.Date(paste0(year, "-12-01")), by = "month")
+  temp_df <- data.frame(date = dates, Bendras = rep(value, length(dates)))
+  df_monthly_gyv_trukme <- rbind(df_monthly_gyv_trukme, temp_df)
+}
+
+df_monthly_gyv_trukme <- df_monthly_gyv_trukme %>%
+  mutate(date = as.character(date))
+
+colnames(df_monthly_gyv_trukme)[2] <- "vid_gyv_truke"
+
+
+######################## NORAS TAUPYTAS ##########################
+df_taupymas <- read_excel("Data/passengers/noras_taupyti.xlsx")
+
+#Laiko formata sutvarkom
+df_taupymas$date <- as.Date(paste0(substring(df_taupymas$date, 1, 4), "-", substring(df_taupymas$date, 6, 7), "-01"))
+df_taupymas$date <- format(df_taupymas$date, "%Y-%m-%d")
+
+######################## SUZEISTUJU AVARIJOJE SKAICIUS ##########################
+df_suzeistieji <- read_excel("Data/passengers/suzeistuju_skaicius.xlsx")
+
+#Laiko formata sutvarkom
+df_suzeistieji$date <- as.Date(paste0(substring(df_suzeistieji$date, 1, 4), "-", substring(df_suzeistieji$date, 6, 7), "-01"))
+df_suzeistieji$date <- format(df_suzeistieji$date, "%Y-%m-%d")
+
+colnames(df_suzeistieji)[2] <- "suzeistieji"
+
+head(df_suzeistieji)
+
+######################## PRAMONES PRODUKCIJOS KAINOS INDEKSAS ##########################
+df_produkcijos_ind <- read_excel("Data/cargo/pramones_produkcijos_kainos_indeksai.xlsx")
+
+#Laiko formata sutvarkom
+df_produkcijos_ind$date <- as.Date(paste0(substring(df_produkcijos_ind$date, 1, 4), "-", substring(df_produkcijos_ind$date, 6, 7), "-01"))
+df_produkcijos_ind$date <- format(df_produkcijos_ind$date, "%Y-%m-%d")
+
+head(df_produkcijos_ind)
+
+```
+
+
+
+```{r}
+# Apjungimas i viena df
+library(dplyr)
+
+# Assuming df1, df2, df3 are your dataframes
+
+# Left join the dataframes by the date column
+result <- left_join(df, df_oil, by = "date") %>%
+          left_join(df_auto_sk, by = "date") %>%
+          left_join(df_eismo_ivykiai, by = "date") %>%
+          left_join(df_emigrantu_sk, by = "date") %>%
+          left_join(df_nedarbingumas, by = "date") %>%
+          left_join(df_taupymas, by = "date") %>%
+          left_join(df_prognoze, by = "date") %>%
+          left_join(df_gyv_sk, by = "date") %>%
+          left_join(df_suzeistieji, by = "date") %>%
+          left_join(df_monthly_gyv_trukme, by = "date")
+
+  # Konvertuoti datos stulpelį į tekstinį formatą
+result$date <- as.character(result$date)
+
+result <- result %>%
+  arrange(desc(row_number()))
+
+result <- result %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  mutate(date = format(date, "%YM%m"))
+
+print(result)
+```
+
+```{r}
+# Save the resulting dataframe to a CSV file
+write.csv(result, "Y1.csv", row.names = FALSE)
+```
+
+
+```{r}
+library(tidyverse)
+library(dplyr)
+############### JURO KROVINIAI ######################
+df_sea <- read_excel("Data/cargo/juru_kroviniai.xlsx")
+
+# Convert the Date column to a Date type
+df_sea$date <- as.Date(as.yearqtr(df_sea$date))
+
+# Expand the data to monthly frequency and fill missing values
+df_sea_monthly <- df_sea %>%
+  complete(date = seq(min(date), max(date), by = "month")) %>%
+  fill(sea_cargo)
+
+# Apply the moving average smoothing
+df_sea_monthly_smoothed <- df_sea_monthly %>%
+  mutate(smoothed_sea_cargo = zoo::rollmean(sea_cargo, k = window_size, fill = NA)) %>%
+  mutate(smoothed_sea_cargo = ifelse(is.na(smoothed_sea_cargo), lag(smoothed_sea_cargo), smoothed_sea_cargo))
+
+df_sea_monthly_smoothed$date <- as.character(df_sea_monthly_smoothed$date)
+
+# Print the resulting data frame
+print(df_sea_monthly_smoothed)
+
+
+```
+
+
+```{r}
+
+
+#Laiko formata sutvarkom
+
+############### PRAMONES PASITIKEJIMAS ######################
+df_pasitikejimas <- read_excel("Data/cargo/pramones_pasitikejimas.xlsx")
+
+#Laiko formata sutvarkom
+df_pasitikejimas$date <- as.Date(paste0(substring(df_pasitikejimas$date, 1, 4), "-", substring(df_pasitikejimas$date, 6, 7), "-01"))
+df_pasitikejimas$date <- format(df_pasitikejimas$date, "%Y-%m-%d")
+
+############### PRAMONES PASITIKEJIMAS ######################
+df_eksportas <- read_excel("Data/cargo/prekiu_eksportas.xlsx")
+
+#Laiko formata sutvarkom
+df_eksportas$date <- as.Date(paste0(substring(df_eksportas$date, 1, 4), "-", substring(df_eksportas$date, 6, 7), "-01"))
+df_eksportas$date <- format(df_eksportas$date, "%Y-%m-%d")
+
+############### PRODUKCIJOS_KAINOS POKYCIAI ######################
+df_kainos_pokyciai <- read_excel("Data/cargo/produkcijos_kainos_pokyciai.xlsx")
+
+#Laiko formata sutvarkom
+df_kainos_pokyciai$date <- as.Date(paste0(substring(df_kainos_pokyciai$date, 1, 4), "-", substring(df_kainos_pokyciai$date, 6, 7), "-01"))
+df_kainos_pokyciai$date <- format(df_kainos_pokyciai$date, "%Y-%m-%d")
+
+############### KROVINIU VEZIMAS PAKLAUSA ######################
+df_kroviniu_apyvarta <- read_excel("Data/cargo/kroviniu_vezimas_paklausa.xlsx")
+
+#Laiko formata sutvarkom
+df_kroviniu_apyvarta$date <- as.Date(paste0(substring(df_kroviniu_apyvarta$date, 1, 4), "-", substring(df_kroviniu_apyvarta$date, 6, 7), "-01"))
+df_kroviniu_apyvarta$date <- format(df_kroviniu_apyvarta$date, "%Y-%m-%d")
+
+df_kroviniu_apyvarta <- df_kroviniu_apyvarta[, -c(2:3)]
+
+colnames(df_kroviniu_apyvarta)[2] <- "kroviniu_apyvarta"
+
+# Left join the dataframes by the date column
+result2 <- left_join(df, df_oil, by = "date") %>%
+          left_join(df_kroviniu_apyvarta, by = "date") %>%
+          left_join(df_kainos_pokyciai, by = "date") %>%
+          left_join(df_eksportas, by = "date") %>%
+          left_join(df_nedarbingumas, by = "date") %>%
+          left_join(df_pasitikejimas, by = "date") %>%
+          left_join(df_prognoze, by = "date") %>%
+          left_join(df_gyv_sk, by = "date") %>%
+          left_join(df_sea_monthly_smoothed, by = "date") %>%
+          left_join(df_produkcijos_ind, by = "date")
+
+# Left join the dataframes by the date column
+bendras <- left_join(df, df_oil, by = "date") %>%
+          left_join(df_auto_sk, by = "date") %>%
+          left_join(df_eismo_ivykiai, by = "date") %>%
+          left_join(df_emigrantu_sk, by = "date") %>%
+          left_join(df_nedarbingumas, by = "date") %>%
+          left_join(df_taupymas, by = "date") %>%
+          left_join(df_prognoze, by = "date") %>%
+          left_join(df_gyv_sk, by = "date") %>%
+          left_join(df_suzeistieji, by = "date") %>%
+          left_join(df_monthly_gyv_trukme, by = "date") %>%
+            left_join(df_kroviniu_apyvarta, by = "date") %>%
+          left_join(df_kainos_pokyciai, by = "date") %>%
+          left_join(df_eksportas, by = "date") %>%
+          left_join(df_pasitikejimas, by = "date") %>%
+          left_join(df_sea_monthly_smoothed, by = "date") %>%
+          left_join(df_produkcijos_ind, by = "date")
+  
+
+result2 <- result2 %>%
+  arrange(desc(row_number()))
+result2 <- result2 %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  mutate(date = format(date, "%YM%m"))
+
+bendras <- bendras %>%
+  arrange(desc(row_number()))
+bendras <- bendras %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  mutate(date = format(date, "%YM%m"))
+
+# Print the resulting dataframe
+print(head)
+
+# Print the resulting dataframe
+print(result2)
+ write.csv(result2, "Y2.csv", row.names = FALSE)
+  write.csv(bendras, "bendras.csv", row.names = FALSE)
+```

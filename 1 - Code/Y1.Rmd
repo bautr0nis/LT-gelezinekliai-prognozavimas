@@ -1,0 +1,398 @@
+---
+title: P160M125 Išorinių verslo duomenų analitikos projektas. Koreliacija
+  Nr. 1
+author: "$\\color{red}{\\text{Zydrunas Bautronis, gelezinkeliu komanda.}}$"
+output:
+  html_document:
+    df_print: paged
+---
+
+$\color{blue}{\text{Sprendimus į žemiau pateiktus klausimus įkelkite į Moodle sistemą}}$.
+
+
+```{r, include = FALSE}
+#options(encoding = 'Windows-1257') # UTF-8
+library(xts)
+require(dplyr)
+library(readxl)
+require(dplyr)
+library(gclus)
+library(imputeTS)
+library(forecast)
+library(Hmisc)
+library(ggplot2)
+```
+
+
+## 1. [1 b.] Duomenų rinkinio aprašymas.
+#### Pateikite, kokį duomenų rinkinį tiriate. Paruoškite duomenis analizei, atsižvelgdami į duomenų tipą (str funkcija). Duomenyse esanti data turi turėti ‘date‘ formatą, o duomenų masyvas – ‘time series‘ klasę. Išspausdinkite sutvarkyto duomenų masyvo pirmuosius 6 įrašus. 
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+#Nuskaitomi duomenys
+duomenys <- read.csv("Y1.csv")
+duomenys$date <- as.Date(paste0(duomenys$date, "01"), format = "%YM%m%d")
+
+duomenys$vid_gyv_trukme <- rollmean(duomenys$vid_gyv_truke, k = 6, fill = NA)
+
+#Spausdinamas rezultatasx
+tail(duomenys)
+
+# Define a function to create the plot for each variable
+plot_by_variable <- function(var_name) {
+  ggplot(duomenys, aes(x = date, y = .data[[var_name]])) +
+    geom_line(aes(color = var_name)) +
+    labs(title = var_name, x = "Date", y = var_name)
+}
+
+# Get all variable names (excluding date)
+var_names <- setdiff(names(duomenys), "date")
+
+# Create a plot for each variable
+lapply(var_names, plot_by_variable)
+
+```
+Duomenų rinkinys sudarytas iš savaitinių duomenų, todėl pirma rasiu trūkstamas reikšmes (jei tokių yra), antru žingsniu padarysiu interpoliavimą (trūkstamų reikšmių atstatymą), trečiu žingsniu duomenis pakeisiu į time series klasę, ketvirtų žingsniu suagreguosiu duomenis (savaitinius paversiu į mėnesinius).
+
+## 2. [2 b.] Duomenų paruošimas analizei.
+#### Šio punkto tikslas – turėti laiko eilutes, kuriose stebėjimai fiksuojami kas mėnesį. Priklausomai nuo pasirinkto duomenų rinkinio, būtini veiksmai: trūkstamų reikšmių atstatymas, agregavimas, interpoliavimas, ekstrapoliavimas, glodinimas ir pan. Patikrinkite, ar kintamuosiuose yra išskirčių (jei taip, jas pašalinkite, parinkę tinkamą metodą). 
+
+
+```{r, message = FALSE, warning = FALSE}
+
+stulp_NA <- colSums(is.na(duomenys))
+stulp_NA # Randa, kuriame stulpelyje, kiek NA reikšmių yra
+
+names(duomenys)[stulp_NA > 0]
+
+duomenys$PROB_N <- na_interpolation(duomenys$PROB_N, option ="spline") #interpoliavimas
+
+```
+NA REISMIU NERASTA
+
+```{r, message = FALSE, warning = FALSE}
+
+#Duomenų masyvas keičiamas į time series klasę
+duomenys_be_datos <- duomenys[,-1]
+
+duomenys1 <- xts(duomenys_be_datos, duomenys$date) 
+  
+is.xts(duomenys1)
+
+#agreguoju duomenis
+data <- apply.monthly(duomenys1, mean) 
+data$Date <- rownames(data)
+rownames(data) <- NULL
+
+#data$Date <- format(as.Date(data$Date, format="%Y-%m-%d"), "%Y-%m")
+
+data$FAPAR <- round(data$FAPAR, digits = 2)
+data$DMP <- round(data$DMP, digits = 2)
+data$PROB_A <- round(data$PROB_A, digits = 2)
+data$FCOVER <- round(data$FCOVER, digits = 2)
+data$PROB_N <- round(data$PROB_N, digits = 2)
+
+print(data[1:6,])
+```
+Duomenys paruošti naudojimui: trūkstamos reikšmės atstatytos, savaitiniai duomenys paversti į mėnesinius.
+
+```{r, message = FALSE, warning = FALSE}
+data <- duomenys
+
+tsoutliers(data$keleiviu_sk)
+tsoutliers(data$kroviniu_kiekis)
+tsoutliers(data$avg_oil_price)
+tsoutliers(data$auto_sk)
+tsoutliers(data$eismo_ivykiai)
+tsoutliers(data$emigrantu_sk)
+tsoutliers(data$unempl_lvl)
+tsoutliers(data$noras_taupyti)
+tsoutliers(data$eko_prognoze)
+tsoutliers(data$gyv_sk)
+tsoutliers(data$suzeistieji)
+tsoutliers(data$vid_gyv_trukme)
+
+par(mfrow=c(1,3))
+boxplot(data$keleiviu_sk, main= 'Keleivių skaičius, 100 tūkst.')
+boxplot(data$kroviniu_kiekis, main= 'Krovinių kiekis, 100 tūkst. tkm')
+```
+Išskirčių duomenyse nėra. 
+
+```{r, message = FALSE, warning = FALSE}
+# Įkeliamos reikalingos bibliotekos
+library(ggplot2)
+
+# Priimame, kad duomenų rėmelis vadinas 'duomenys'
+# Priimame, kad 'laikas' kintamasis reiškia laiką (pvz., data arba mėnuo)
+
+# Grafikas keleivių skaičiui
+ggplot(duomenys, aes(x = date, y = keleiviu_sk)) +
+  geom_line() +
+  labs(title = "Keleivių skaičiaus kitimas laike",
+       x = "Metai",
+       y = "Keleivių skaičius")
+
+# Grafikas krovinio kiekiui
+ggplot(duomenys, aes(x = date, y = kroviniu_kiekis)) +
+  geom_line() +
+  labs(title = "Krovinių kiekio kitimas laike",
+       x = "Metai",
+       y = "Krovinių kiekis")
+
+```
+
+## 3. [2.5 b.] Laiko eilutės aprašymas. 
+#### Pasirinkite vieną kintamąjį – laiko eilutę. Pateikite jos statistines charakteristikas, atvaizduokite grafiškai (kintamojo dinamika laike), patikrinkite duomenų normalumą, stacionarumą, autokoreliaciją, dalinę autokoreliaciją ir jų statistinį reikšmingumą. Pakomentuokite gautus rezultatus.
+
+
+```{r, message = FALSE, warning = FALSE}
+#Savaitiniai duomenys:
+print("Keleivių skaičius:")
+summary(duomenys$keleiviu_sk)
+
+#Mėnesiniai duomenys:
+print("Krovinių kiekis:")
+summary(duomenys$kroviniu_kiekis)
+```
+FCOVER kintamojo minimali reikšmė 0.1, maksimali - 0.24, kintamojo vidurkis - 0.1698 (kai duomenys suagreguoti pamėnesiui), kai duomenys savaitiniai, vidurkis yra 0.1701. 
+
+
+
+Grafinis atvaizdavimas laike FCOVER kintamojo:
+
+```{r, message = FALSE, warning = FALSE}
+
+# Create a ggplot object
+ggplot(duomenys, aes(x = date, y = keleiviu_sk)) +
+  geom_line() +
+  labs(x = "date", y = "keleiviu_sk", title = "Time Series Plot of keleiviu_sk")
+
+ggplot(duomenys, aes(x = date, y = kroviniu_kiekis)) +
+  geom_line() +
+  labs(x = "date", y = "kroviniu_kiekis", title = "Time Series Plot of kroviniu_kiekis")
+```
+Tikrinu keleiviu_sk normalumą:
+
+```{r, message = FALSE, warning = FALSE}
+tsdata <- as.ts(data)
+shapiro.test(tsdata[,2])
+hist(tsdata[,2], main = 'Keleivių skaičiaus pasiskirstymas')
+
+tsdata <- as.ts(data)
+shapiro.test(tsdata[,3])
+hist(tsdata[,3], main = 'Krovinių kiekio pasiskirstymas')
+
+# Įkeliamos reikalingos bibliotekos
+library(ggplot2)
+library(stats)
+
+# Priimame, kad duomenys pavadinimu 'data' jau yra konvertuoti į laiko eilutes
+
+# Konvertuoti duomenis į laiko seriją
+tsdata <- as.ts(data)
+
+# Tikrinti normalumo su Shapiro-Wilk testu ir piešti histogramą kartu su normalumo kreive
+
+# Keleivių skaičiaus histograma su normalumo kreive
+shapiro_test_result <- shapiro.test(tsdata[,2]) # Shapiro-Wilk testo rezultatai
+hist(tsdata[,2], main = 'Keleivių skaičiaus pasiskirstymas', prob=TRUE, col="grey",xlab="Keleivių skaičius, 100 tūkst. ", ylab = 'Tankis') # Histograma
+curve(dnorm(x, mean=mean(tsdata[,2]), sd=sd(tsdata[,2])), add=TRUE, col="red") # Normalumo kreivė
+legend("topright", legend=c("Normalumo kreivė", "Histograma"), col=c("red", "grey"), lwd=2)
+
+# Krovinio kiekio histograma su normalumo kreive
+shapiro_test_result <- shapiro.test(tsdata[,3]) # Shapiro-Wilk testo rezultatai
+hist(tsdata[,3], main = 'Krovinių kiekio pasiskirstymas', prob=TRUE, col="grey", xlab="Krovinių kiekis, 100 tūkst. tkm", ylab = 'Tankis') # Histograma
+curve(dnorm(x, mean=mean(tsdata[,3]), sd=sd(tsdata[,3])), add=TRUE, col="red") # Normalumo kreivė
+legend("topright", legend=c("Normalumo kreivė", "Histograma"), col=c("red", "grey"), lwd=2)
+
+```
+Keleiviu_sk:
+p-value 7.14e-05 < 0.05, tai reiškia, kad duomenys nėra pasiskirstę pagal normalųjį skirstinį.
+
+Kroviniu_kiekis:
+ p-value 8.657e-05 < 0.05, tai reiškia, kad duomenys nėra pasiskirstę pagal normalųjį skirstinį.
+
+Stacionarumas:
+```{r, message = FALSE, warning = FALSE}
+library(tseries)
+
+#perform KPSS test
+kpss.test(tsdata[,2], null="Level") #sezoniškumas
+kpss.test(tsdata[,2], null="Trend") #trendas
+
+kpss.test(tsdata[,3], null="Level") #sezoniškumas
+kpss.test(tsdata[,3], null="Trend") #trendas
+
+```
+H0: laiko eilutė yra stacionari tendencija.
+p-value = 0.01 < 0.05, todėl priimu KPSS testo nulinę hipotezę, ką reiškia, kad laiko eilutė nera stacionari abiems Y.  
+
+
+Autokoreliacija, statistinis reikšmingumas:
+```{r, message = FALSE, warning = FALSE}
+print("KELEIVIU_SK:")
+Box.test(diff(tsdata[,2]), lag=3, type="Ljung-Box")
+
+acf(tsdata[,2],  main = 'Autokoreliacija keleivių skaičiui')
+
+print("KROVINIU SK:")
+Box.test(diff(tsdata[,3]), lag=3, type="Ljung-Box")
+
+acf(tsdata[,3],  main = 'Autokoreliacija krovinių kiekiui')
+```
+
+Keleiviu_sk : 
+p-value = 0.004944 < 0.05, tai stebėjimai priklausomi nuo laiko.
+Pagal ACF grafiką: pirmosios trys vėlavimo autokoreliacijos yra statistiškai reikšmingos (stipriausia pirmoji), o visos vėlesnės autokoreliacijos nėra. 
+
+Kroviniu_kiekis : 
+p-value = 0.04374 < 0.05, tai stebėjimai priklausomi nuo laiko.
+Pagal ACF grafiką: pirmosios penkios vėlavimo autokoreliacijos yra statistiškai reikšmingos (stipriausia pirmoji), o visos vėlesnės autokoreliacijos nėra. 
+
+
+
+Dalinė autokoreliacija, statistinis reikšmingumas:
+```{r, message = FALSE, warning = FALSE}
+pacf(tsdata[,2])
+
+pacf(tsdata[,3])
+# pirmą brūkšnį paimti ir jis kaip reikšmingiausias
+```
+Keleiviu_sk:
+Pagal PACF grafiką: pirmoji vėlavimo reikšmė yra statistiškai reikšminga, o visų kitų vėlavimų dalinės autokoreliacijos nėra statistiškai reikšmingos.
+
+Kroviniu_sk:
+Pagal PACF grafiką: pirmoji vėlavimo reikšmė yra statistiškai reikšminga, o visų kitų vėlavimų dalinės autokoreliacijos nėra statistiškai reikšmingos.
+
+
+## 4. [2.5 b.] Laiko eilutės dekompozicija. 
+#### Atlikite pasirinktos laiko eilutės dekompoziciją. Rekomenduojama taikyti adityvų arba multiplikatyvų STL metodą. Apibūdinkite kiekvieną iš gautų komponenčių. Patikrinkite, ar dekompozicijos liekanos yra nepriklausomos laike. Pakomentuokite gautus rezultatus.
+
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+
+decomposition <- stl(ts(as.numeric(data[,2]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)
+
+plot(decomposition, main = 'Y1 - Keleivių skaičius')
+print("KELEIVIU SKACIUS:")
+summary(decomposition)
+
+print("Keleiviu sk. normalizuota:")
+print(100*prop.table(apply(decomposition$time.series, 2, IQR)))
+
+
+decomposition2 <- stl(ts(as.numeric(data[,3]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)
+
+plot(decomposition2, main = 'Y2 - Krovinių kiekis')
+print("KROVINIU KIEKIS:")
+summary(decomposition2)
+
+print("Normalizuota:")
+print(100*prop.table(apply(decomposition2$time.series, 2, IQR)))
+
+```
+
+
+Reminderiui pritaikau Ljung-Box testą:
+```{r, message = FALSE, warning = FALSE}
+print("Keleiviu sk:")
+Box.test(diff(stl(ts(as.numeric(data[,2]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)$time.series[, 3]), lag=3, type="Ljung-Box") 
+
+print("Kroviniu kiekis:")
+Box.test(diff(stl(ts(as.numeric(data[,3]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)$time.series[, 3]), lag=3, type="Ljung-Box")
+#nenurodau tiesiogiai remainder kintamojo, kuris buvo viršuje įvestas todėl, kad neknit'ina  html, ties šia eilute meta klaida, kai nurodau tik remainderį. 
+
+# Keleivių skaičiaus dekompozicija ir normalumo testas
+stl_keleiviu_sk <- stl(ts(as.numeric(data[,2]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)
+remainder_keleiviu_sk <- diff(stl_keleiviu_sk$time.series[, 3])
+shapiro_test_keleiviu_sk <- shapiro.test(remainder_keleiviu_sk)
+shapiro_test_keleiviu_sk
+
+# Krovinio kiekio dekompozicija ir normalumo testas
+stl_kroviniu_kiekis <- stl(ts(as.numeric(data[,3]), frequency=12), s.window="periodic", robust=TRUE, t.window = 12)
+remainder_kroviniu_kiekis <- diff(stl_kroviniu_kiekis$time.series[, 3])
+shapiro_test_kroviniu_kiekis <- shapiro.test(remainder_kroviniu_kiekis)
+shapiro_test_kroviniu_kiekis
+
+
+```
+p-value = 5.138e-05 < 0.05, todėl remainderis yra priklausomas nuo laiko abiems atvejais.
+
+
+## 5.	[2 b.] Priklausomybių tarp laiko eilučių tyrimas.  
+#### Pasirinkite bent tris kintamuosius (laiko eilutes). Ištirkite šių kintamųjų tarpusavio priklausomybę: jos reikšmingumą ir stiprumą. Įvertinkite kryžminę priklausomybę. Įvertinkite priklausomybės (ne)pastovumą per laikotarpį (slenkanti koreliacija). Pakomentuokite gautus rezultatus.
+
+Tikrinu ar likę kintamieji pasiskirstę pagal normalųjį skirstinį, kad galėčiau pritaikyti Pearson koreliaciją. 
+
+```{r, message = FALSE, warning = FALSE}
+shapiro.test(tsdata[,4])
+shapiro.test(tsdata[,5])
+shapiro.test(tsdata[,6])
+shapiro.test(tsdata[,7])
+shapiro.test(tsdata[,8])
+shapiro.test(tsdata[,9])
+shapiro.test(tsdata[,10])
+shapiro.test(tsdata[,11])
+shapiro.test(tsdata[,12])
+shapiro.test(tsdata[,13])
+```
+Visi pasiskirste pagal normaluju skirstini
+
+
+```{r, message = FALSE, warning = FALSE}
+# correlation
+library(corrplot)
+ALL <- ts.intersect(tsdata[, 2:13])
+Pearson <- cor(ALL, use = "complete.obs", method = "pearson")
+
+corrplot(Pearson, type="upper", order="hclust", tl.col="black", tl.srt=45, method = "ellipse")
+corrplot(Pearson, type="upper", order="hclust", tl.col="black", tl.srt=45, method = "number",  number.cex=0.75)
+
+
+
+```
+Pagal gautus rezultatus galima padaryti išvadą, kad tarpusavyje visi trys kintamieji koreliuoja gerai, tačiau stipriausia koreliacija tarp 1 ir 3 stulpelio, kas būtų FAPAR ir PROB_A.
+
+Kryžminė koreliacija:
+```{r, message = FALSE, warning = FALSE}
+
+# cross correlation
+#par(mfrow=c(3,1))
+ccf(ALL[, 1], ALL[, 2], ylab = " ", xlab = " ", main = "Cross-correlation: FAPAR vs PROB_A") 
+```
+Grafike matosi, kad nėra reikšmingesnės koreliacijos nei nuliniame taške, todėl nei veidančiojo (leading), nei atsiliekančiojo (lagging) nėra.
+
+
+```{r, message = FALSE, warning = FALSE}
+ccf(ALL[,1], ALL[,3], ylab = " ", xlab = " ", main = "Cross-correlation: FAPAR vs FCOVER") 
+```
+Grafike matosi, kad nėra reikšmingesnės koreliacijos nei nuliniame taške, todėl nei veidančiojo (leading), nei atsiliekančiojo (lagging) nėra.
+
+
+```{r, message = FALSE, warning = FALSE}
+
+ccf(ALL[,2], ALL[,3], ylab = " ", xlab = " ", main = "Cross-correlation: PROB_A vs FCOVER") 
+```
+Grafike matosi, kad nėra reikšmingesnės koreliacijos nei nuliniame taške, todėl nei veidančiojo (leading), nei atsiliekančiojo (lagging) nėra.
+
+
+Slenkanti koreliacija:
+```{r, message = FALSE, warning = FALSE}
+# Rolling correlations
+rollc <- function(x){ 
+  dim <- ncol(x) 
+  rcor <- cor(x)[lower.tri(diag(dim), diag = FALSE)] 
+  return(rcor) 
+} 
+rcor1 <- rollapply(cbind(ALL[,1], ALL[,2]), width = 24, rollc, align = "right", by.column = FALSE) 
+rcor2 <- rollapply(cbind(ALL[,1], ALL[,3]), width = 24, rollc, align = "right", by.column = FALSE) 
+rcor3 <- rollapply(cbind(ALL[,2], ALL[,3]), width = 24, rollc, align = "right", by.column = FALSE) 
+
+par(mfrow=c(3,1))
+plot(rcor1, main = "Rolling correlation: FAPAR vs PROB_A", ylab = " ", xlab=" ", type="l")
+plot(rcor2, main = "Rolling correlation: FAPAR vs FCOVER", ylab = " ", xlab=" ", type="l")
+plot(rcor3, main = "Rolling correlation: PROB_A vs FCOVER", ylab = " ", xlab=" ", type="l")
+
+
+```
+Iš visų trijų grafikų galima pamatyti, kad visą laikotarpį laikosi teigiama koreliacija be didelių pokyčių, išskyrus kelis trumpus laikotarpius, todėl galima daryti išvadą, jog koreliacija laike gan pastovi. 

@@ -26,11 +26,15 @@ A PESTLE (Political, Economic, Social, Technological, Legal, Environmental) anal
 ## Granger Causality Analysis
 Granger causality analysis was conducted to identify variables that have a significant impact on the target variables (passenger and cargo counts). This analysis helped in understanding the cause-and-effect relationships and selecting appropriate variables for the models.
 
+![Results Table](./3%20-%20Results/Granger.png)
+
 ## Univariate and Multivariate Analysis
 Both univariate and multivariate analyses were performed to explore the data and understand the relationships between different variables. This step involved examining the statistical properties of the data and identifying patterns and trends.
 
 ## Modeling with Gretl
 Using Gretl, modern ex-post and ex-ante models were developed. These models incorporated the findings from the previous analyses and were used to forecast future values of passenger and cargo counts. The models were evaluated based on RMSE and MAPE to ensure their accuracy and reliability.
+
+![Results Table](./3%20-%20Results/Models.png)
 
 ## Forecast and Scenarios
 Based on the best-performing model, forecasts were generated for passenger and cargo counts. Two scenarios, optimistic and pessimistic, were developed to understand the range of possible future outcomes. These scenarios help in planning and decision-making by providing insights into potential risks and opportunities.
@@ -38,7 +42,8 @@ Based on the best-performing model, forecasts were generated for passenger and c
 ## Results
 The results section includes the detailed findings from the models, including the RMSE and MAPE values for different models. The best-performing model was identified and used for generating the forecasts and scenarios. 
 
-![Results Table](3 - Results/Forecast-1.png) <!-- Update with the actual path to your image -->
+![Results Table](./3%20-%20Results/Forecast-1.png)
+![Results Table](./3%20-%20Results/Forecast-2.png)
 
 ## Conclusion
 The project successfully developed accurate models for forecasting passenger and cargo counts. The scenarios provide valuable insights for strategic planning and risk management. The combination of literature review, PESTLE analysis, Granger causality analysis, and advanced modeling techniques ensured a robust and comprehensive analysis.

@@ -38,7 +38,7 @@ Based on the best-performing model, forecasts were generated for passenger and c
 ## Results
 The results section includes the detailed findings from the models, including the RMSE and MAPE values for different models. The best-performing model was identified and used for generating the forecasts and scenarios. 
 
-![Results Table](./3 - Results/Forecast-1.png) <!-- Update with the actual path to your image -->
+![Results Table](./'3 - Results'/Forecast-1.png) <!-- Update with the actual path to your image -->
 
 ## Conclusion
 The project successfully developed accurate models for forecasting passenger and cargo counts. The scenarios provide valuable insights for strategic planning and risk management. The combination of literature review, PESTLE analysis, Granger causality analysis, and advanced modeling techniques ensured a robust and comprehensive analysis.
